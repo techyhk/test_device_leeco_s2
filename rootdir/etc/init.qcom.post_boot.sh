@@ -56,9 +56,7 @@ echo $set_almk_ppr_adj > /sys/module/process_reclaim/parameters/min_score_adj
 # vmpressure_file_min = (last bin - second last bin ) + last bin
 #
 # Set allocstall_threshold to 0 for all targets.
-#
-# Calculate vmpressure_file_min as below & set for 64 bit:
-# vmpressure_file_min = last_lmk_bin + (last_lmk_bin - last_but_one_lmk_bin)
+
 echo "18432,23040,27648,32256,55296,80640" > /sys/module/lowmemorykiller/parameters/minfree
 
 echo 1 > /sys/module/process_reclaim/parameters/enable_process_reclaim
@@ -71,22 +69,8 @@ echo 0 > /sys/module/vmpressure/parameters/allocstall_threshold
 echo 60 > /proc/sys/vm/swappiness
 echo 0 > /proc/sys/vm/page-cluster
 
-minfree_series=`cat /sys/module/lowmemorykiller/parameters/minfree`
-minfree_1="${minfree_series#*,}" ; rem_minfree_1="${minfree_1%%,*}"
-minfree_2="${minfree_1#*,}" ; rem_minfree_2="${minfree_2%%,*}"
-minfree_3="${minfree_2#*,}" ; rem_minfree_3="${minfree_3%%,*}"
-minfree_4="${minfree_3#*,}" ; rem_minfree_4="${minfree_4%%,*}"
-minfree_5="${minfree_4#*,}"
-vmpres_file_min=$((minfree_5 + (minfree_5 - rem_minfree_4)))
-echo $vmpres_file_min > /sys/module/lowmemorykiller/parameters/vmpressure_file_min
-echo 0 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
-
-panel=`cat /sys/class/graphics/fb0/modes`
-if [ "${panel:5:1}" == "x" ]; then
-    panel=${panel:2:3}
-else
-    panel=${panel:2:4}
-fi
+echo 81250 > /sys/module/lowmemorykiller/parameters/vmpressure_file_min
+echo 1 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
 
 # Apply Scheduler and Governor settings for 8976
 # SoC IDs are 266, 274, 277, 278
@@ -127,6 +111,27 @@ do
     echo 40 > $gpu_bimc_io_percent
 done
 
+# disable thermal & BCL core_control to update interactive gov settings
+echo 0 > /sys/module/msm_thermal/core_control/enabled
+for mode in /sys/devices/soc.0/qcom,bcl.*/mode
+do
+    echo -n disable > $mode
+done
+for hotplug_mask in /sys/devices/soc.0/qcom,bcl.*/hotplug_mask
+do
+    bcl_hotplug_mask=`cat $hotplug_mask`
+    echo 0 > $hotplug_mask
+done
+for hotplug_soc_mask in /sys/devices/soc.0/qcom,bcl.*/hotplug_soc_mask
+do
+    bcl_soc_hotplug_mask=`cat $hotplug_soc_mask`
+    echo 0 > $hotplug_soc_mask
+done
+for mode in /sys/devices/soc.0/qcom,bcl.*/mode
+do
+    echo -n enable > $mode
+done
+
 # enable governor for power cluster
 echo 1 > /sys/devices/system/cpu/cpu0/online
 echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
@@ -136,7 +141,7 @@ echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/interactive/io_is_busy
 echo 40000 > /sys/devices/system/cpu/cpu0/cpufreq/interactive/min_sample_time
 echo 400000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 echo 59000 > /sys/devices/system/cpu/cpu0/cpufreq/interactive/above_hispeed_delay
-echo 806400 > /sys/devices/system/cpu/cpu0/cpufreq/interactive/hispeed_freq
+echo 1190400 > /sys/devices/system/cpu/cpu0/cpufreq/interactive/hispeed_freq
 echo "1 400000:60 691200:80" > /sys/devices/system/cpu/cpu0/cpufreq/interactive/target_loads
 
 # enable governor for perf cluster
@@ -149,9 +154,9 @@ echo 40000 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/min_sample_time
 echo 40000 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/sampling_down_factor
 echo 400000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
 echo 60000 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/max_freq_hysteresis
-echo 1113600 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/hispeed_freq
-echo "19000 1113600:39000" > /sys/devices/system/cpu/cpu4/cpufreq/interactive/above_hispeed_delay
-echo "85 1113600:90 1612800:80" > /sys/devices/system/cpu/cpu4/cpufreq/interactive/target_loads
+echo 1190400 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/hispeed_freq
+echo "19000 1190400:39000" > /sys/devices/system/cpu/cpu4/cpufreq/interactive/above_hispeed_delay
+echo "85 1190400:90 1382400:80" > /sys/devices/system/cpu/cpu4/cpufreq/interactive/target_loads
 
 # HMP Task packing settings for 8976
 echo 30 > /proc/sys/kernel/sched_small_task
@@ -182,6 +187,14 @@ echo 1 > /sys/module/lpm_levels/parameters/lpm_prediction
 # remove interaction lock when idle
 echo 100 > /sys/devices/virtual/graphics/fb0/idle_time
 
+if [ `cat /sys/devices/soc0/revision` == "1.0" ]; then
+# Disable l2-pc and l2-gdhs low power modes
+    echo N > /sys/module/lpm_levels/system/a53/a53-l2-gdhs/idle_enabled
+    echo N > /sys/module/lpm_levels/system/a72/a72-l2-gdhs/idle_enabled
+    echo N > /sys/module/lpm_levels/system/a53/a53-l2-pc/idle_enabled
+    echo N > /sys/module/lpm_levels/system/a72/a72-l2-pc/idle_enabled
+fi
+
 # Disable L2 GDHS on 8976
 echo N > /sys/module/lpm_levels/system/a53/a53-l2-gdhs/idle_enabled
 echo N > /sys/module/lpm_levels/system/a72/a72-l2-gdhs/idle_enabled
@@ -194,8 +207,40 @@ echo 1 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/use_migration_notif
 echo 50000 > /proc/sys/kernel/sched_freq_inc_notify
 echo 50000 > /proc/sys/kernel/sched_freq_dec_notify
 
+# Enable core control
+insmod /system/lib/modules/core_ctl.ko
+#for 8976
+echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
+echo 68 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
+echo 40 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
+echo 100 > /sys/devices/system/cpu/cpu4/core_ctl/offline_delay_ms
+echo 1 > /sys/devices/system/cpu/cpu4/core_ctl/is_big_cluster
+
+# re-enable thermal & BCL core_control now
+echo 1 > /sys/module/msm_thermal/core_control/enabled
+for mode in /sys/devices/soc.0/qcom,bcl.*/mode
+do
+    echo -n disable > $mode
+done
+for hotplug_mask in /sys/devices/soc.0/qcom,bcl.*/hotplug_mask
+do
+    echo $bcl_hotplug_mask > $hotplug_mask
+done
+for hotplug_soc_mask in /sys/devices/soc.0/qcom,bcl.*/hotplug_soc_mask
+do
+    echo $bcl_soc_hotplug_mask > $hotplug_soc_mask
+done
+for mode in /sys/devices/soc.0/qcom,bcl.*/mode
+do
+    echo -n enable > $mode
+done
+
 # Enable timer migration to little cluster
 echo 1 > /proc/sys/kernel/power_aware_timer_migration
+
+# Start energy-awareness for 8976
+start energy-awareness
 
 #enable sched colocation and colocation inheritance
 echo 130 > /proc/sys/kernel/sched_grp_upmigrate

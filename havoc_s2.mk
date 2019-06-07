@@ -18,7 +18,7 @@
 $(call inherit-product, device/leeco/s2/full_s2.mk)
 
 # Inherit some common PixelExperience stuff.
-$(call inherit-product, vendor/aosp/config/common_full_phone.mk)
+$(call inherit-product, vendor/havoc/config/common.mk)
 
 # PixelExperience stuff.
 TARGET_BOOT_ANIMATION_RES := 1080
@@ -26,7 +26,7 @@ TARGET_GAPPS_ARCH := arm64
 
 ## Device identifier. This must come after all inclusions
 PRODUCT_DEVICE := s2
-PRODUCT_NAME := aosp_s2
+PRODUCT_NAME := havoc_s2
 PRODUCT_BRAND := LeEco
 PRODUCT_MANUFACTURER := LeMobile
 
@@ -43,3 +43,7 @@ PRODUCT_SYSTEM_PROPERTY_BLACKLIST += ro.product.model
 
 # Release name
 PRODUCT_RELEASE_NAME := s2
+
+# Official
+export export
+HAVOC_BUILD_TYPE=Official

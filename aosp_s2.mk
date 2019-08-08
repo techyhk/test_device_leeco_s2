@@ -14,14 +14,16 @@
 # limitations under the License.
 #
 
-# Boot animation
-TARGET_BOOT_ANIMATION_RES := 1080
 
 # Inherit device configuration
 $(call inherit-product, device/leeco/s2/full_s2.mk)
 
 # Inherit some common AOSP stuff.
-$(call inherit-product, vendor/aosp/common.mk)
+$(call inherit-product, vendor/aosp/config/common_full_phone.mk)
+
+# Evolution-X stuff.
+TARGET_BOOT_ANIMATION_RES := 1080
+TARGET_GAPPS_ARCH := arm64
 
 ## Device identifier. This must come after all inclusions
 PRODUCT_DEVICE := s2
@@ -43,11 +45,3 @@ PRODUCT_SYSTEM_PROPERTY_BLACKLIST += ro.product.model
 # Release name
 PRODUCT_RELEASE_NAME := s2
 
-# Set this flag in build script
-ifeq ($(CURRENT_BUILD_TYPE), gapps)
-	# Use Gapps
-	TARGET_SHIPS_SEPERATE_GAPPS_BUILD := true
-	WITH_GAPPS := true
-	TARGET_GAPPS_ARCH := arm64
-	IS_PHONE := true
-endif
